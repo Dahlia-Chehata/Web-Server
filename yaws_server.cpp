@@ -1,4 +1,8 @@
-#include "server.h"
+#include "yaws_server.h"
+
+// *****************************************************************************
+// *                              U T I L S                                    *
+// *****************************************************************************
 
 void sigchld_handler(int s)
 {
@@ -21,38 +25,32 @@ void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
+// *****************************************************************************
+// *                                                                           *
+// *****************************************************************************
 
-
-int yaws::start_server(void)
+yaws_server::yaws_server()
 {
-    int sockfd; // the server will listen on this socket
-    int new_fd; // new connection on new_fd
 
+}
+
+yaws_server::~yaws_server()
+{
+    
+}
+
+int yaws_server::init(void)
+{
     struct addrinfo hints, *servinfo; // *serveinfo is pointer to a linked list
     struct addrinfo *p; // *p used for looping over the serveinfo
 
-    /**
-     * client's address information
-     * 
-     * we use sockaddr_storage because it's large anough to hold both ipv4 and
-     * ipv6 structures (struct sockaddr_in, struct sockaddr_in6)
-     */
-    struct sockaddr_storage client_addr;
-
-    socklen_t sin_size;
     struct sigaction sa;
     int yes = 1; // passed to setsockopt
     
-    /**
-     * The client ip address in printable format
-     * We use INET6_ADDRSTRLEN so we have space for both ipv4 and ipv6 address
-     * length.
-     */ 
-    char client_ip_address[INET6_ADDRSTRLEN];
     int status; // return value of getaddrinfo() system call.
 
     memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_UNSPEC;
+    hints.ai_family = AF_UNSPEC; // AF_INET or AF_INET6
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE; // this will use local host IP
 
@@ -121,6 +119,9 @@ int yaws::start_server(void)
         exit(EXIT_FAILURE);
     }
 
+    /**
+     * This code for reaping zombie processes as child process exit.
+     */ 
     sa.sa_handler = sigchld_handler; // reap all dead processes
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESTART;
@@ -128,6 +129,19 @@ int yaws::start_server(void)
         perror("sigaction");
         exit(EXIT_FAILURE);
     }
+}
+
+int yaws_server::run(void)
+{
+    socklen_t sin_size; // size of client address struct
+    /**
+     * The client ip address in printable format
+     * We use INET6_ADDRSTRLEN so we have space for both ipv4 and ipv6 address
+     * length.
+     */ 
+    char client_ip_address[INET6_ADDRSTRLEN];
+
+    init();
 
     printf("server: waiting for connections...\n");
 
@@ -166,13 +180,19 @@ int yaws::start_server(void)
          */
         if (!fork()) { // this is the child process
             close(sockfd); // child doesn't need the listener
-            if (send(new_fd, "Hello, world!", 13, 0) == -1) {
+            char* message = "HTTP/1.1 200 OK\r\n<html>HELLO!<html>";
+            if (send(new_fd, message, strlen(message), 0) == -1) {
                 perror("send");
             }
 
             close(new_fd);
             exit(EXIT_SUCCESS);
         }
+
+        // char message[1024];
+        // recv(new_fd, message, 1024, 0);
+        // printf("message from browser: %s", message);
+
         close(new_fd);  // parent doesn't need this
     }
     
