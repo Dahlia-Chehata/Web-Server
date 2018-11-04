@@ -27,4 +27,4 @@ yaws_server.o: yaws_server.cpp yaws_server.h
 # files and *~ backup files:
 clean:
 	$(RM) $(TARGET) *.o *~
-	$(RM) -r *dSYMm
+	$(RM) -r *dSYM
