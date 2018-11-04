@@ -129,6 +129,8 @@ int yaws_server::init(void)
         perror("sigaction");
         exit(EXIT_FAILURE);
     }
+
+    return 0;
 }
 
 int yaws_server::run(void)
@@ -180,7 +182,9 @@ int yaws_server::run(void)
          */
         if (!fork()) { // this is the child process
             close(sockfd); // child doesn't need the listener
-            char* message = "HTTP/1.1 200 OK\r\n<html>HELLO!<html>";
+            
+            // This will show on browser.
+            char* message = "HTTP/1.1 200 OK\r\nContent-Type: text/html\n\n<html>HELLO! YAWS Server v0.0.1<html>\n";
             if (send(new_fd, message, strlen(message), 0) == -1) {
                 perror("send");
             }
