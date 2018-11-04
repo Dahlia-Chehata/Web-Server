@@ -9,12 +9,10 @@ enum HTTP_METHOD
 {
     GET,
     POST,
-    // PUT,
-    // HEAD,
     NOT_IMPLEMENTED
 };
 
-enum HTTP_PROTOCOL {
+enum HTTP_VERSION {
     HTTP1_0,
     HTTP1_1,
     HTTP_UNSUPPORTED
