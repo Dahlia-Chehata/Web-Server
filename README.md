@@ -12,7 +12,6 @@ To run the server
 ```bash
 ./yaws_server
 ```
-> ./yaws_server
 
 To run the client
 ```bash
