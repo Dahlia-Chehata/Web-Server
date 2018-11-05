@@ -14,7 +14,6 @@
 #include <arpa/inet.h>
 #include <signal.h>
 
-#include "http_utils.h"
 #include "conn_pool.h"
 
 #define PORT "7070"  // the port users will be connecting to
