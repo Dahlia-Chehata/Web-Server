@@ -1,0 +1,21 @@
+HTTP/1.1 200 OK
+Server: nginx
+Date: Thu, 09 Feb 2017 16:38:26 GMT
+Content-Type: application/json
+Content-Length: 328
+Connection: close
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Credentials: true
+
+{
+  "form": {
+    "name": "Ahmed",
+    "surname": "Yakout"
+  },
+  "headers": {
+    "Content-Length": "21",
+    "Content-Type": "application/x-www-form-urlencoded",
+    "Host": "yaws_server.org"
+  },
+  "url": ""
+}

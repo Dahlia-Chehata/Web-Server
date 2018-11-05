@@ -1,0 +1,23 @@
+HTTP/1.0 200 OK
+Vary: Accept-Encoding
+Content-Type: text/html
+Date: Thu, 09 Feb 2017 16:41:37 GMT
+Expires: Thu, 09 Feb 2017 16:41:37 GMT
+Cache-Control: private, max-age=0
+Last-Modified: Thu, 08 Dec 2016 01:00:57 GMT
+X-Content-Type-Options: nosniff
+Server: sffe
+X-XSS-Protection: 1; mode=block
+Accept-Ranges: none
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hello World</title>
+</head>
+<body>
+    <h1>Hello World!</h1>
+    <p>Welcome to the index.html web page ..</p>
+    <p>Here's a link to <a href="ipsum.html">Ipsum</a></p>
+</body>
+</html>

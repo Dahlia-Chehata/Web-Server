@@ -15,6 +15,7 @@
 #include <signal.h>
 
 #include "http_utils.h"
+#include "conn_pool.h"
 
 #define PORT "7070"  // the port users will be connecting to
 #define BACKLOG 10   // how many pending connections queue will hold
@@ -27,6 +28,7 @@ private:
     size_t port;
 	int sockfd; // the server will listen on this socket
     int new_fd; // new connection on new_fd
+    conn_pool *pool;
 
     /**
      * client's address information

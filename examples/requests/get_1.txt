@@ -1,0 +1,2 @@
+GET /about.html HTTP/1.0
+User-Agent: Mozilla/5.0
