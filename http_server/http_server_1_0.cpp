@@ -48,7 +48,7 @@ void http_server_v1_0::handle_request(const http_req_handler& request) {
 
 	//check the method if it was supported or not
 	if(request.get_http_method() == HTTP_METHOD_NOT_IMPLEMENTED) {
-		//TODO respond with 400 bad request
+		//TODO respond with 405 method not allowed
 		return;
 	}
 
@@ -74,7 +74,7 @@ void http_server_v1_0::handle_request(const http_req_handler& request) {
 		//get it's dimensions
     	struct stat filestat;
     	int fd;
-    	if (((fd = open (filename, O_RDONLY)) < 0) || (fstat(fd, &filestat) < 0)) {
+    	if (((fd = open (file_path, O_RDONLY)) < 0) || (fstat(fd, &filestat) < 0)) {
     		close(fd);
 			//TODO respond with 500 server internal error
 			return;
@@ -83,7 +83,7 @@ void http_server_v1_0::handle_request(const http_req_handler& request) {
 
 		//TODO respond with 200 ok
 		//TODO respond with content-length = filestat.st_size
-		//TODO respond with appropriate header depends on the file type
+		//TODO respond with appropriate header types_mng.generate_file_header(file_path)
 		//TODO respond with file data
 	}
 
@@ -92,13 +92,18 @@ void http_server_v1_0::handle_request(const http_req_handler& request) {
 
 		//the length of the received file
 		if(request.get_header_value("Content-length") == "") {
-			//TODO respond with 400 bad request
+			//TODO respond with 411 length required
+			return;
+		}
+
+		if(!types_mng.is_file_supported(request.get_http_url_target())) {
+			//TODO respond with 415 Unsupported Media Type
 			return;
 		}
 
 		expected_post = stoi(request.get_header_value("Content-length"));
-		//TODO limit the posted file
-		//TODO check the type of the uploaded file
+		//TODO limit the posted file //413 Payload Too Large
+
 		//TODO respond with 200 ok
 	}
 
