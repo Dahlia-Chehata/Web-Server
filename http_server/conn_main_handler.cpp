@@ -15,6 +15,7 @@
 #include "http_req_handler.h"
 #include "http_utils.h"
 #include "sock_RAII.h"
+#include "http_server_1_0.h"
 
 using namespace std;
 
@@ -116,6 +117,13 @@ void handle_connection(int sock_fd) {
      */
     sock_RAII sock_prot(sock_fd);
 
+    /*
+    * HTTP servers with different versions
+    * will be listed here.
+    */
+    http_server_v1_0 serv_1_0(sock_fd);
+    //http_server_v1_1 serv_1_1(sock_fd);
+
     while(1) {
 
         //receive the request or multiple requests from the client
@@ -163,6 +171,11 @@ void handle_connection(int sock_fd) {
         }
 
         //start executing the requests based on HTTP_VERSION
-        //TODO
+        for(int i=0; i<requests_handlers.size(); i++) {
+            serv_1_0.handle_request(requests_handlers[0]);
+            if(serv_1_0.is_end()) {
+                return;
+            }
+        }
     }
 }

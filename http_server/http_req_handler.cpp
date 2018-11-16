@@ -45,8 +45,8 @@ void http_req_handler::parse_request() {
     }
 
     //get data out of the first line
-    http_method = get_http_method(fline_parameters[0]);
-    http_version = get_http_version(fline_parameters[2]);
+    http_method = get_http_method_pv(fline_parameters[0]);
+    http_version = get_http_version_pv(fline_parameters[2]);
     target = fline_parameters[1];
 
     /* handle the headers of the request */
@@ -63,7 +63,7 @@ void http_req_handler::parse_request() {
     return;
 }
 
-HTTP_METHOD http_req_handler::get_http_method(const std::string& method_str){
+HTTP_METHOD http_req_handler::get_http_method_pv(const std::string& method_str){
     if (method_str == "GET") {
         return HTTP_METHOD_GET;
     } else if (method_str == "POST") {
@@ -72,7 +72,7 @@ HTTP_METHOD http_req_handler::get_http_method(const std::string& method_str){
     return HTTP_METHOD_NOT_IMPLEMENTED;
 }
 
-HTTP_VERSION http_req_handler::get_http_version(const std::string& version_str){
+HTTP_VERSION http_req_handler::get_http_version_pv(const std::string& version_str){
     if (version_str == "HTTP/1.0") {
         return HTTP_VERSION_HTTP1_0;
     } else if (version_str == "HTTP/1.1") {

@@ -20,15 +20,15 @@ private:
 	bool valid;
 
 	void initialize_data();
-	bool totally_send();
+	bool totally_send(const char* data, int data_size);
 public:
 	http_responder(int sock_fd);
 	~http_responder();
 	http_responder* set_http_version (const std::string& http_version);
 	http_responder* set_http_statuscode (const std::string& status_code);
 	http_responder* add_header (const std::string& header);
-	http_responder* add_data (const std::string& data);
-	http_responder* add_data (const uint8_t* data, int size);
+	http_responder* set_data (const std::string& data);
+	http_responder* set_data (const uint8_t* data, int size);
 	bool send_response();
 };
 

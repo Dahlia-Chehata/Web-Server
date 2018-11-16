@@ -10,7 +10,8 @@ TARGET = yaws_server yaws_client
 
 # http_server directory and files
 HTTP_SRV_DIR = http_server
-HTTP_SRV_DIR_FILES = $(HTTP_SRV_DIR)/conn_main_handler.o $(HTTP_SRV_DIR)/http_req_handler.o $(HTTP_SRV_DIR)/sock_RAII.o
+HTTP_SRV_DIR_FILES = $(HTTP_SRV_DIR)/conn_main_handler.o $(HTTP_SRV_DIR)/http_req_handler.o $(HTTP_SRV_DIR)/sock_RAII.o \
+ $(HTTP_SRV_DIR)/http_server_1_0.o $(HTTP_SRV_DIR)/types_manager.o $(HTTP_SRV_DIR)/http_responder.o
 
 all: $(TARGET)
 
@@ -42,8 +43,17 @@ http_req_handler.o: $(HTTP_SRV_DIR)/http_req_handler.cpp $(HTTP_SRV_DIR)/http_re
 conn_main_handler.o:  $(HTTP_SRV_DIR)/conn_main_handler.cpp $(HTTP_SRV_DIR)/conn_main_handler.h
 	$(CC) $(CFLAGS) -c $(HTTP_SRV_DIR)/conn_main_handler.cpp
 
-sock_RAII.o:  $(HTTP_SRV_DIR)/sock_RAII.cpp $(HTTP_SRV_DIR)/sock_RAII	.h
+sock_RAII.o:  $(HTTP_SRV_DIR)/sock_RAII.cpp $(HTTP_SRV_DIR)/sock_RAII.h
 	$(CC) $(CFLAGS) -c $(HTTP_SRV_DIR)/sock_RAII.cpp
+
+http_server_1_0.o:  $(HTTP_SRV_DIR)/http_server_1_0.cpp $(HTTP_SRV_DIR)/http_server_1_0.h
+	$(CC) $(CFLAGS) -c $(HTTP_SRV_DIR)/http_server_1_0.cpp
+
+types_manager.o:  $(HTTP_SRV_DIR)/types_manager.cpp $(HTTP_SRV_DIR)/types_manager.h
+	$(CC) $(CFLAGS) -c $(HTTP_SRV_DIR)/types_manager.cpp
+
+http_responder.o:  $(HTTP_SRV_DIR)/http_responder.cpp $(HTTP_SRV_DIR)/http_responder.h
+	$(CC) $(CFLAGS) -c $(HTTP_SRV_DIR)/http_responder.cpp
 
 # To start over from scratch, type 'make clean'.  This
 # removes the executable file, as well as old .o object

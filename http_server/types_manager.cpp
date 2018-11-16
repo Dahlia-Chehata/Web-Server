@@ -1,6 +1,8 @@
 #include <string>
 #include <iostream>
 
+#include "types_manager.h"
+
 using namespace std;
 
 string types_manager::get_file_type (const string& file_name) {

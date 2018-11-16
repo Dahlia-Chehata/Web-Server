@@ -9,7 +9,7 @@
  */
 class types_manager{
 private:
-	std::string get_file_type (const string& file_name);
+	std::string get_file_type (const std::string& file_name);
 public:
 	bool is_file_supported (const std::string& file_name);
 	std::string generate_file_header (const std::string& file_name);

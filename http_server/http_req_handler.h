@@ -24,8 +24,8 @@ private:
      * This parse the request and set the values of the fields.
      */
     void parse_request();
-    HTTP_METHOD get_http_method(const std::string& method_str);
-    HTTP_VERSION get_http_version(const std::string& version_str);
+    HTTP_METHOD get_http_method_pv(const std::string& method_str);
+    HTTP_VERSION get_http_version_pv(const std::string& version_str);
 
 public:
 

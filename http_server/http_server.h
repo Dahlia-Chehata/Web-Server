@@ -8,10 +8,12 @@
  */
 class http_server{
 	public:
-		void handle_request(const http_req_handler& request);
-		void handle_data(const std::string& data);
-		bool is_end();
-		int bypass_request_checking();
+		http_server() = default;
+		virtual ~http_server() {};
+		virtual void handle_request(http_req_handler& request) = 0;
+		virtual void handle_data(const std::string& data) = 0;
+		virtual bool is_end() = 0;
+		virtual int bypass_request_checking() = 0;
 };
 
 #endif //HTTP_SERVER_

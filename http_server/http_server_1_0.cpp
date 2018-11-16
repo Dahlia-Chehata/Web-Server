@@ -1,15 +1,23 @@
 #include <vector>
 #include <string>
+#include <iostream>
+#include <sstream>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 
 #include "http_req_handler.h"
+#include "http_responder.h"
+#include "types_manager.h"
+#include "http_server_1_0.h"
+
+#define HTTP_V1_0 "HTTP/1.0"
 
 using namespace std;
 
@@ -35,29 +43,32 @@ static vector<string> split_text (string text, const string& delimiter) {
     return splited_text;
 }
 
-http_server_v1_0::http_server_v1_0(int sock_fd) {
+http_server_v1_0::http_server_v1_0(int sock_fd) : responder(sock_fd), http_server() {
 	this->sock_fd = sock_fd;
 	request_counter = 0;
 	expected_post = 0;
+	post_url = "";
 }
 
-void http_server_v1_0::handle_request(const http_req_handler& request) {
+void http_server_v1_0::handle_request(http_req_handler& request) {
 
 	//increment request number
 	request_counter++;
 
 	//check the method if it was supported or not
 	if(request.get_http_method() == HTTP_METHOD_NOT_IMPLEMENTED) {
-		//TODO respond with 405 method not allowed
-		return;
+			responder.set_http_version(HTTP_V1_0)
+			->set_http_statuscode("405 Method Not Allowed")
+			->send_response();
+			return;
 	}
 
 	//handle get requests
 	if(request.get_http_method() == HTTP_METHOD_GET) {
 
 		//create path to the file
-		string base_dir = "./web"
-		string file_path = base_dir + last_request.get_http_url_target();
+		string base_dir = "./web";
+		string file_path = base_dir + request.get_http_url_target();
 
 		//handle index file
 		if(file_path == base_dir + "/") {
@@ -66,25 +77,56 @@ void http_server_v1_0::handle_request(const http_req_handler& request) {
 
 		//try to open the file if existed
 		FILE * fp;
-		if((fp = fopen(file_path, "r")) == NULL) {
-			//TODO respond with 404 not found
+		if((fp = fopen(file_path.c_str(), "r")) == NULL) {
+			responder.set_http_version(HTTP_V1_0)
+			->set_http_statuscode("404 Not Found")
+			->send_response();
 			return;
 		}
 
 		//get it's dimensions
     	struct stat filestat;
     	int fd;
-    	if (((fd = open (file_path, O_RDONLY)) < 0) || (fstat(fd, &filestat) < 0)) {
+    	if (((fd = open (file_path.c_str(), O_RDONLY)) < 0) || (fstat(fd, &filestat) < 0)) {
     		close(fd);
-			//TODO respond with 500 server internal error
+			responder.set_http_version(HTTP_V1_0)
+			->set_http_statuscode("500 Internal Server Error")
+			->send_response();
 			return;
     	}
     	close(fd);
 
-		//TODO respond with 200 ok
-		//TODO respond with content-length = filestat.st_size
-		//TODO respond with appropriate header types_mng.generate_file_header(file_path)
-		//TODO respond with file data
+		char content_length_buffer[24];
+
+		//read the data from the file
+		char* data_buffer = (char*) malloc(filestat.st_size+1);
+		if(data_buffer == NULL) {
+			responder.set_http_version(HTTP_V1_0)
+			->set_http_statuscode("500 Internal Server Error")
+			->send_response();
+			return;
+		}
+		if(fread(data_buffer, filestat.st_size, 1, fp) == NULL) {
+			responder.set_http_version(HTTP_V1_0)
+			->set_http_statuscode("500 Internal Server Error")
+			->send_response();
+			free(data_buffer);
+			return;
+		}
+		data_buffer[filestat.st_size] = '\0';
+
+		stringstream integer_converter;
+		integer_converter << filestat.st_size;
+
+		responder.set_http_version(HTTP_V1_0)
+		->set_http_statuscode("200 OK")
+		->add_header("Content-Length: " + integer_converter.str())
+		->add_header(types_mng.generate_file_header(file_path))
+		->set_data((const uint8_t *) data_buffer, (int)filestat.st_size)
+		->send_response();
+
+		free(data_buffer);
+		return;
 	}
 
 	//handle post requests
@@ -92,19 +134,25 @@ void http_server_v1_0::handle_request(const http_req_handler& request) {
 
 		//the length of the received file
 		if(request.get_header_value("Content-length") == "") {
-			//TODO respond with 411 length required
+			responder.set_http_version(HTTP_V1_0)
+			->set_http_statuscode("411 Length Required")
+			->send_response();
 			return;
 		}
 
 		if(!types_mng.is_file_supported(request.get_http_url_target())) {
-			//TODO respond with 415 Unsupported Media Type
+			responder.set_http_version(HTTP_V1_0)
+			->set_http_statuscode("415 Unsupported Media Type")
+			->send_response();
 			return;
 		}
 
 		expected_post = stoi(request.get_header_value("Content-length"));
+		post_url = request.get_http_url_target();
 		//TODO limit the posted file //413 Payload Too Large
-
-		//TODO respond with 200 ok
+		responder.set_http_version(HTTP_V1_0)
+		->set_http_statuscode("200 OK")
+		->send_response();
 	}
 
 }
@@ -116,19 +164,21 @@ void http_server_v1_0::handle_data(const std::string& data)  {
 
 	//server give data less than wanted
 	if(expected_post != data.length() || !expected_post) {
-		//TODO respond with 500 internal error
+		responder.set_http_version(HTTP_V1_0)
+		->set_http_statuscode("500 Internal Server Error")
+		->send_response();
 		return;
 	}
 
 	//get the full path to the file. all are directories by the last is file
-	vector<string> path = split_text(last_request.get_http_url_target(), "/");
+	vector<string> path = split_text(post_url, "/");
 
 	//build directories
-	string base_dir = "./web/"
-	for(int i=0; i<path.length()-1; i++) {
+	string base_dir = "./web/";
+	for(int i=0; i<path.size()-1; i++) {
 		base_dir += path[i];
 		//check if error while creating the directory
-		if(mkdir(base_dir, 0700) == -1) {
+		if(mkdir(base_dir.c_str(), 0700) == -1) {
 			//TODO respond with 500 internal error
 			return;
 		}
@@ -136,11 +186,13 @@ void http_server_v1_0::handle_data(const std::string& data)  {
 	}
 
 	//create the file
-	path += path.back();
-	FILE * fp = fopen(path, "a");
+	base_dir += path.back();
+	FILE * fp = fopen(base_dir.c_str(), "a");
 	//check if error while creating the file
 	if(fp == NULL) {
-		//TODO respond with 500 internal error
+		responder.set_http_version(HTTP_V1_0)
+		->set_http_statuscode("500 Internal Server Error")
+		->send_response();
 		return;
 	}
 
@@ -150,6 +202,12 @@ void http_server_v1_0::handle_data(const std::string& data)  {
 
 	//set the new http_v1.0 state
 	expected_post = 0;
+
+	//send last 200Ok
+	responder.set_http_version(HTTP_V1_0)
+	->set_http_statuscode("200 OK")
+	->send_response();
+	return;
 }
 
 bool http_server_v1_0::is_end() {
