@@ -111,7 +111,7 @@ void handle_connection(int sock_fd) {
 
     /**
      * resource acquisition is initialization
-     * this use to auto-close the socked descriptor after this function goes out
+     * This used to auto-close the socked descriptor after this function goes out
      * of scope.
      */
     sock_RAII sock_prot(sock_fd);
