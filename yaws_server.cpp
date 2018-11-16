@@ -1,4 +1,5 @@
 #include "yaws_server.h"
+#include "http_server/conn_main_handler.h"
 
 // *****************************************************************************
 // *                              U T I L S                                    *
@@ -182,20 +183,7 @@ int yaws_server::run(void)
          */
         if (!fork()) { // this is the child process
             close(sockfd); // child doesn't need the listener
-            
-            // This will work if connected from browser.
-            char* message = "HTTP/1.1 200 OK\r\nContent-Type: text/html\n\n<html>HELLO! YAWS Server v0.0.1<html>\n";
-            if (send(new_fd, message, strlen(message), 0) == -1) {
-                perror("send");
-            }
-
-            // while(1) {
-                char rcv_message[1024];
-                recv(new_fd, rcv_message, 1024, 0);
-                printf("message from browser: %s", rcv_message);
-            // }
-
-            close(new_fd);
+            handle_connection(new_fd);
             exit(EXIT_SUCCESS);
         }
 

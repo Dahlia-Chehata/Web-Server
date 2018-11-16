@@ -1,10 +1,20 @@
-#include <errno.h>
 #include <vector>
 #include <string>
+#include <iostream>
+    
+#include <errno.h>
+#include <string.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <unistd.h>
 
-#include "connection_main_handler.h"
+#include <sys/types.h>
+#include <sys/socket.h>
+
+#include "conn_main_handler.h"
+#include "http_req_handler.h"
 #include "http_utils.h"
+#include "sock_RAII.h"
 
 using namespace std;
 
@@ -22,14 +32,14 @@ static vector<string> sub_requests (const uint8_t* received_data, uint16_t data_
     for(int i=0; i<data_size; i++) {
     
         //check if in end of request
-        if(strcmp((received_data + i), CRLF) == 0) {
+        if(strcmp((const char*)(received_data + i), CRLFCRLF) == 0) {
             
             //advance the pointer
-            i += strlen(CRLF) - 1;
+            i += strlen(CRLFCRLF) - 1;
             current_request += CRLF;
 
             //if request not empty, then add it to requests vector
-            if(current_request.length() > 0) {
+            if(current_request.length() > strlen(CRLF)) {
                 requests.push_back(current_request);
                 current_request = "";
             }//else, ignore
@@ -62,14 +72,14 @@ static uint32_t total_data_vector_length (const vector<string>& data_list) {
  * this function convert a vector of requests represented as strings to 
  * vector of requests represented as http_request_handler objects.
  */
-static vector<http_request_handler> handle_requests (const vector<string>& requests_string) {
+static vector<http_req_handler> handle_requests (const vector<string>& requests_string) {
     
-    vector<http_request_handler> requests_handlers;
+    vector<http_req_handler> requests_handlers;
     
     for (const string& request : requests_string) {
 
         //do the conversion
-        http_request_handler req_handler (request);
+        http_req_handler req_handler (request);
 
         //if this is a valid request, then add it to the vector
         if(req_handler) {
@@ -99,26 +109,31 @@ void handle_connection(int sock_fd) {
      */
     uint16_t buffer_start_index = 0;
 
+    /**
+     * resource acquisition is initialization
+     * this use to auto-close the socked descriptor after this function goes out
+     * of scope.
+     */
+    sock_RAII sock_prot(sock_fd);
+
     while(1) {
 
         //receive the request or multiple requests from the client
-        ssize_t size = -1;
+        ssize_t size = 0;
         uint16_t tries = 0;
-        while(size != 0 && tries++ < MAX_RECV_TRIES) {
-            ssize_t size = recv(new_fd, (buffer + buffer_start_index), buffer_length - buffer_start_index - 1, 0);
+        while(size == 0 && tries++ < MAX_RECV_TRIES) {
+            size = recv(sock_fd, (buffer + buffer_start_index), buffer_length - buffer_start_index - 1, 0);
         }
 
         //server didn't receive any input for long period of time
         if(size == 0) {
             // TODO log reason of not receiving
-            close(sock_fd);
             return;
         }
 
         //client closed the connection or error happened
         if(size == -1) {
             // TODO log the error with strerror(errno)
-            close(sock_fd);
             return;
         }
 
@@ -139,12 +154,11 @@ void handle_connection(int sock_fd) {
         }
 
         //transform each valid string request to object
-        vector<http_request_handler> requests_handlers = handle_requests(requests_string);
+        vector<http_req_handler> requests_handlers = handle_requests(requests_string);
 
         //detect malformed requests
         if(requests_handlers.size() != requests_string.size()) {
             // TODO log the error as malformed request provided by the client.
-            close(sock_fd);
             return;
         }
 
