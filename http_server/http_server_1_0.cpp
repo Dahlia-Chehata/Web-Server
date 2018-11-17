@@ -16,8 +16,7 @@
 #include "http_responder.h"
 #include "types_manager.h"
 #include "http_server_1_0.h"
-
-#define HTTP_V1_0 "HTTP/1.0"
+#include "http_utils.h"
 
 using namespace std;
 
@@ -106,7 +105,7 @@ void http_server_v1_0::handle_request(http_req_handler& request) {
 			->send_response();
 			return;
 		}
-		if(fread(data_buffer, filestat.st_size, 1, fp) == NULL) {
+		if(fread(data_buffer, filestat.st_size, 1, fp) == filestat.st_size) {
 			responder.set_http_version(HTTP_V1_0)
 			->set_http_statuscode("500 Internal Server Error")
 			->send_response();
@@ -133,7 +132,7 @@ void http_server_v1_0::handle_request(http_req_handler& request) {
 	if(request.get_http_method() == HTTP_METHOD_POST) {
 
 		//the length of the received file
-		if(request.get_header_value("Content-length") == "") {
+		if(request.get_header_value("Content-Length") == "") {
 			responder.set_http_version(HTTP_V1_0)
 			->set_http_statuscode("411 Length Required")
 			->send_response();
@@ -147,7 +146,9 @@ void http_server_v1_0::handle_request(http_req_handler& request) {
 			return;
 		}
 
-		expected_post = stoi(request.get_header_value("Content-length"));
+		//try to get the content length
+		char* pEnd;
+		expected_post = strtol (request.get_header_value("Content-Length").c_str(),&pEnd,10);
 		post_url = request.get_http_url_target();
 		//TODO limit the posted file //413 Payload Too Large
 		responder.set_http_version(HTTP_V1_0)
@@ -157,13 +158,13 @@ void http_server_v1_0::handle_request(http_req_handler& request) {
 
 }
 
-void http_server_v1_0::handle_data(const std::string& data)  {
+void http_server_v1_0::handle_data(const uint8_t* data, uint32_t data_length)  {
 
 	//increment request number
 	request_counter++;
 
 	//server give data less than wanted
-	if(expected_post != data.length() || !expected_post) {
+	if(expected_post != data_length || !expected_post) {
 		responder.set_http_version(HTTP_V1_0)
 		->set_http_statuscode("500 Internal Server Error")
 		->send_response();
@@ -187,7 +188,7 @@ void http_server_v1_0::handle_data(const std::string& data)  {
 
 	//create the file
 	base_dir += path.back();
-	FILE * fp = fopen(base_dir.c_str(), "a");
+	FILE * fp = fopen(base_dir.c_str(), "w");
 	//check if error while creating the file
 	if(fp == NULL) {
 		responder.set_http_version(HTTP_V1_0)
@@ -197,7 +198,7 @@ void http_server_v1_0::handle_data(const std::string& data)  {
 	}
 
 	//write data to the file
-	fputs(data.c_str(), fp);
+	fwrite(data, data_length, 1, fp);
 	fclose(fp);
 
 	//set the new http_v1.0 state

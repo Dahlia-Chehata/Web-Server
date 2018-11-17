@@ -6,6 +6,10 @@
 #define	CRLF  "\r\n"
 #define	CRLFCRLF  "\r\n\r\n"
 
+#define HTTP_V1_0 "HTTP/1.0"
+#define HTTP_V1_1 "HTTP/1.1"
+
+
 enum HTTP_METHOD
 {
     HTTP_METHOD_GET,

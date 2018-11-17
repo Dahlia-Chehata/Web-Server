@@ -15,12 +15,12 @@ class http_server_v1_0 : public http_server{
 		std::string post_url;
 		int request_counter;
 		int sock_fd;
-		bool expected_post;
+		int expected_post;
 		types_manager types_mng;
 		http_responder responder;
 	public:
 		void handle_request(http_req_handler& request);
-		void handle_data(const std::string& data);
+		void handle_data(const uint8_t* data, uint32_t data_length);
 		bool is_end();
 		int bypass_request_checking();
 		http_server_v1_0(int sock_fd);

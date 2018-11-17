@@ -11,7 +11,7 @@ class http_server{
 		http_server() = default;
 		virtual ~http_server() {};
 		virtual void handle_request(http_req_handler& request) = 0;
-		virtual void handle_data(const std::string& data) = 0;
+		virtual void handle_data(const uint8_t* data, uint32_t data_length) = 0;
 		virtual bool is_end() = 0;
 		virtual int bypass_request_checking() = 0;
 };

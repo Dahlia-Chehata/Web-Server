@@ -1,7 +1,8 @@
 #include <vector>
 #include <string>
 #include <iostream>
-    
+#include <memory>
+
 #include <errno.h>
 #include <string.h>
 #include <stdint.h>
@@ -16,6 +17,8 @@
 #include "http_utils.h"
 #include "sock_RAII.h"
 #include "http_server_1_0.h"
+#include "http_server.h"
+#include "http_responder.h"
 
 using namespace std;
 
@@ -91,6 +94,33 @@ static vector<http_req_handler> handle_requests (const vector<string>& requests_
     return requests_handlers;
 }
 
+static bool handle_post_request(int sock_fd, http_server* curr_server, uint32_t post_size) {
+
+    //buffer to store post data
+    unique_ptr<uint8_t[]> buffer(new uint8_t[post_size]);
+
+    //fill the buffer
+    uint32_t size = 0, tries = 0, total_received = 0;
+    while(total_received != post_size && tries++ < MAX_RECV_TRIES) {
+
+        size = recv(sock_fd, (buffer.get() + total_received), (post_size - total_received), 0);
+        
+        if(size == -1) {
+            return false;
+        }
+
+        total_received += size;
+    }
+
+    //didn't receive the data for a long period of time
+    if(total_received != post_size) {
+        return false;
+    }
+
+    curr_server->handle_data(buffer.get(), total_received);
+    return true;
+}
+
 /**
  * this function will be called from the pool-worker thread 
  * to handle the connection.
@@ -98,8 +128,8 @@ static vector<http_req_handler> handle_requests (const vector<string>& requests_
 void handle_connection(int sock_fd) {
 
     //buffer to store the request
-    uint16_t buffer_length = 1024;
-    uint8_t buffer[buffer_length];
+    uint32_t buffer_length = 1024;   //1-KB buffer
+    unique_ptr<uint8_t[]> buffer (new uint8_t[buffer_length]);
 
     /**
      * this variable mark where the start of the writing to the buffer should occur.
@@ -117,20 +147,25 @@ void handle_connection(int sock_fd) {
      */
     sock_RAII sock_prot(sock_fd);
 
+    /**
+     * responder to respond to the client if the http method not supported yet.
+     */
+    http_responder responder(sock_fd);
+
     /*
     * HTTP servers with different versions
     * will be listed here.
     */
+    http_server* curr_server;
     http_server_v1_0 serv_1_0(sock_fd);
     //http_server_v1_1 serv_1_1(sock_fd);
 
     while(1) {
 
         //receive the request or multiple requests from the client
-        ssize_t size = 0;
-        uint16_t tries = 0;
+        uint32_t size = 0, tries = 0;
         while(size == 0 && tries++ < MAX_RECV_TRIES) {
-            size = recv(sock_fd, (buffer + buffer_start_index), buffer_length - buffer_start_index - 1, 0);
+            size = recv(sock_fd, (buffer.get() + buffer_start_index), buffer_length - buffer_start_index - 1, 0);
         }
 
         //server didn't receive any input for long period of time
@@ -153,7 +188,7 @@ void handle_connection(int sock_fd) {
         buffer[total_buffered_data] = '\0';
 
         //get the HTTP requests out of the received data
-        vector<string> requests_string = sub_requests(buffer, total_buffered_data);
+        vector<string> requests_string = sub_requests(buffer.get(), total_buffered_data);
 
         //fix the start of the buffer and the buffer itself for the next read
         buffer_start_index = total_buffered_data - total_data_vector_length(requests_string);
@@ -172,9 +207,37 @@ void handle_connection(int sock_fd) {
 
         //start executing the requests based on HTTP_VERSION
         for(int i=0; i<requests_handlers.size(); i++) {
-            serv_1_0.handle_request(requests_handlers[0]);
-            if(serv_1_0.is_end()) {
+
+            if(requests_handlers[i].get_http_version() == HTTP_VERSION_HTTP1_0) {
+                curr_server = &serv_1_0;
+            }
+            else if(requests_handlers[i].get_http_version() == HTTP_VERSION_HTTP1_1) {
+                curr_server = &serv_1_0;
+            }
+            else {
+                responder.set_http_version(HTTP_V1_1)
+                ->set_http_statuscode("505 HTTP Version Not Supported")
+                ->send_response();
                 return;
+            }
+
+            curr_server->handle_request(requests_handlers[i]);
+
+            //detect end of connection from http server
+            if(curr_server->is_end()) {
+                return;
+            }
+
+            //detect POST request
+            if(curr_server->bypass_request_checking() > 0) {
+                //try to handle the POST request, if failed, then return and end the connection.
+                if(!handle_post_request(sock_fd, curr_server, curr_server->bypass_request_checking())) {
+                    return;
+                }
+                //detect end of connection from http server
+                if(curr_server->is_end()) {
+                    return;
+                }
             }
         }
     }
