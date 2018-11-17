@@ -15,10 +15,12 @@
 #include <signal.h>
 
 #include "conn_pool.h"
+#include "http_server/conn_main_handler.h"
+#include "logger.h"
 
 #define PORT "7070"  // the port users will be connecting to
 #define BACKLOG 10   // how many pending connections queue will hold
-#define SERVER_ROOT "www" // where files will be served.
+#define SERVER_ROOT "web" // where files will be served.
 
 
 class yaws_server
@@ -38,31 +40,12 @@ private:
     struct sockaddr_storage client_addr;
 
     /**
-     * Receive request from client connection.
+     * TODO
      */ 
-    int recv_request();
-    /**
-     * parse the received request using request_handler.
-     */ 
-    int parse_request();
-    /**
-     * after parsing the request this method will process the request
-     * depending on the http method (post, get ..) using request_handler.
-     */ 
-    int process_request();
-    /**
-     * when processing request is done, repsonse_handler will prepare the
-     * reponse.
-     */ 
-    int prepare_response();
-    /**
-     * when the response is ready send it.
-     */ 
-    int send_response();
-
+    void handle_request();
 
 public:
-    yaws_server(/* args */);
+    yaws_server(char** args);
     ~yaws_server();
 
     int init( void );

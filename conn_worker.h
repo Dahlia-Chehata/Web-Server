@@ -8,7 +8,7 @@ class conn_worker
 private:
     std::thread t;
 public:
-    conn_worker(/* args */);
+    conn_worker();
     ~conn_worker();
 
     void join();

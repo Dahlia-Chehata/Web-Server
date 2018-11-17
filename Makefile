@@ -18,22 +18,19 @@ all: $(TARGET)
 yaws_client: client.cpp
 	$(CC) $(CFLAGS) client.cpp -o yaws_client
 	
-yaws_server: main.o yaws_server.o conn_worker.o conn_pool.o $(HTTP_SRV_DIR_FILES)
-	$(CC) $(CFLAGS) -o yaws_server main.o yaws_server.o conn_worker.o conn_pool.o $(HTTP_SRV_DIR_FILES)
+yaws_server: main.o yaws_server.o conn_worker.o $(HTTP_SRV_DIR_FILES)
+	$(CC) $(CFLAGS) -o yaws_server main.o yaws_server.o conn_worker.o $(HTTP_SRV_DIR_FILES)
 
 # ------------------------------------------------------------------------------
 
 main.o: main.cpp
 	$(CC) $(CFLAGS) -c main.cpp
 
-yaws_server.o: yaws_server.cpp yaws_server.h
+yaws_server.o: conn_pool.h yaws_server.cpp yaws_server.h
 	$(CC) $(CFLAGS) -c yaws_server.cpp
 
 conn_worker.o: conn_worker.cpp conn_worker.h
 	$(CC) $(CFLAGS) -c conn_worker.cpp
-
-conn_pool.o: conn_pool.cpp conn_pool.h
-	$(CC) $(CFLAGS) -c conn_pool.cpp
 
 # ------------------------------------------------------------------------------ http_server
 

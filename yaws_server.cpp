@@ -1,11 +1,10 @@
 #include "yaws_server.h"
-#include "http_server/conn_main_handler.h"
 
 // *****************************************************************************
 // *                              U T I L S                                    *
 // *****************************************************************************
 
-void sigchld_handler(int s)
+static void sigchld_handler(int s)
 {
     // waitpid() might overwrite errno, so we save and restore it:
     int saved_errno = errno;
@@ -17,7 +16,7 @@ void sigchld_handler(int s)
 
 
 // get sockaddr, IPv4 or IPv6:
-void *get_in_addr(struct sockaddr *sa)
+static void *get_in_addr(struct sockaddr *sa)
 {
     if (sa->sa_family == AF_INET) {
         return &(((struct sockaddr_in*)sa)->sin_addr);
@@ -30,14 +29,31 @@ void *get_in_addr(struct sockaddr *sa)
 // *                                                                           *
 // *****************************************************************************
 
-yaws_server::yaws_server()
+yaws_server::yaws_server(char** args)
 {
+    bool flag = false;
 
+    while(*args != NULL)
+    {
+        if (strcmp(*args, "-m") == 0)
+        {
+            flag = true;
+            std::cout << "running server with multi-threading option" << std::endl;
+            size_t size = atoi(*(args+1));
+            std::cout << size << std::endl;
+            // TODO: handle errors
+            pool = new conn_pool(size);
+        }
+        args++;
+    }
+
+    if(!flag) pool = NULL;
 }
 
 yaws_server::~yaws_server()
 {
-    
+    close(sockfd);
+    close(new_fd);
 }
 
 int yaws_server::init(void)
@@ -91,7 +107,7 @@ int yaws_server::init(void)
          * 
          * A port number is used by clients to connect to the server.
          */
-        if(bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+        if(::bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
             close(sockfd); // socket should be closed.
 
             perror("server: bind");
@@ -146,7 +162,8 @@ int yaws_server::run(void)
 
     init();
 
-    printf("server: waiting for connections...\n");
+    // printf("server: waiting for connections...\n");
+    yaws::print_welcome_message();
 
     // wait and accept incoming connections.
     // main server loop.
@@ -174,8 +191,20 @@ int yaws_server::run(void)
             sizeof client_ip_address
         );
 
-        printf("server: got connection from %s\n", client_ip_address);
+        yaws::log_new_connection(client_ip_address);
 
+        if (pool)
+        {
+            pool->enqueue([](int new_fd){ handle_connection(new_fd); }, new_fd);
+
+            // auto& s_fd = new_fd;
+
+            // pool->enqueue([s_fd] {
+            //     handle_connection(s_fd);
+            // });
+
+            continue;
+        }
         /**
          * to handle multiple clients we use fork.
          * when there is new connection, we accept it and fork a child process
@@ -186,8 +215,6 @@ int yaws_server::run(void)
             handle_connection(new_fd);
             exit(EXIT_SUCCESS);
         }
-
-        close(new_fd);  // parent doesn't need this
     }
     
     // never return

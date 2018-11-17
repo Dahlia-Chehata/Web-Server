@@ -1,10 +1,10 @@
-#ifndef SOCKET_RAII_
-#define SOCKET_RAII_
+#ifndef SOCKET_RAII_H_
+#define SOCKET_RAII_H_
 
  /*
  * Resource acquisition is initialization.
  * this is used to make sure the socket file descriptor 
- * is always closed when out of scope.
+ * is always closed when the object it contains goes out of scope.
  */
 class sock_RAII{
 	private:
@@ -14,4 +14,4 @@ class sock_RAII{
 		~sock_RAII();
 };
 
-#endif //SOCKET_RAII_
+#endif //SOCKET_RAII_H_

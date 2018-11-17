@@ -3,12 +3,8 @@
 int main(int argc, char* argv[])
 {
     // start the server
-    yaws_server* http_server = new yaws_server();
-    
-    http_server->run();
-
-    // do we really need this? the call to run will never return aslun right?
-    free(http_server);
+    yaws_server my_server(argv);
+    my_server.run();
 
     return 0;
 }

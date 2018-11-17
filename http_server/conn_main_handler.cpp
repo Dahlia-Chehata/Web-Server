@@ -20,29 +20,9 @@
 #include "http_server_1_1.h"
 #include "http_server.h"
 #include "http_responder.h"
+#include "../logger.h"
 
 using namespace std;
-
-vector<string> split_text (string text, const std::string& delimiter) {
-
-    size_t pos = 0;
-    string token;
-    std::vector<std::string> splited_text;
-
-    while ((pos = text.find(delimiter)) != string::npos) {
-        token = text.substr(0, pos);
-        if(token.length() > 0) {
-            splited_text.push_back(token);
-        }
-        text.erase(0, pos + delimiter.length());
-    }
-
-    if(text.length() > 0) {
-        splited_text.push_back(text);
-    }
-
-    return splited_text;
-}
 
 /**
  * this function will take as a parameter the received data from
@@ -144,7 +124,7 @@ static bool handle_post_request(int sock_fd, http_server* curr_server, uint32_t 
 }
 
 /**
- * this function will be called from the pool-worker thread 
+ * This function will be called from the pool-worker thread
  * to handle the connection.
  */
 void handle_connection(int sock_fd) {
@@ -211,6 +191,8 @@ void handle_connection(int sock_fd) {
 
         //get the HTTP requests out of the received data
         vector<string> requests_string = sub_requests(buffer.get(), total_buffered_data);
+
+        yaws::log_new_request(requests_string);
 
         //fix the start of the buffer and the buffer itself for the next read
         buffer_start_index = total_buffered_data - total_data_vector_length(requests_string);
