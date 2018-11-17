@@ -9,6 +9,8 @@
 #define HTTP_V1_0 "HTTP/1.0"
 #define HTTP_V1_1 "HTTP/1.1"
 
+#include <string>
+#include <vector>
 
 enum HTTP_METHOD
 {
@@ -22,5 +24,7 @@ enum HTTP_VERSION {
     HTTP_VERSION_HTTP1_1,
     HTTP_VERSION_HTTP_UNSUPPORTED
 };
+
+std::vector<std::string> split_text (std::string text, const std::string& delimiter);
 
 #endif // HTTP_UTILS_H_

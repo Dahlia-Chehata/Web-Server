@@ -15,26 +15,29 @@
 #include "http_req_handler.h"
 #include "http_responder.h"
 #include "types_manager.h"
-#include "http_server_1_0.h"
+#include "http_server_1_1.h"
 #include "http_utils.h"
 
 using namespace std;
 
-http_server_v1_0::http_server_v1_0(int sock_fd) : responder(sock_fd), http_server() {
+
+http_server_v1_1::http_server_v1_1(int sock_fd) : responder(sock_fd), http_server() {
 	this->sock_fd = sock_fd;
+	request_counter = 0;
 	request_counter = 0;
 	expected_post = 0;
 	post_url = "";
+	terminated = false;
 }
 
-void http_server_v1_0::handle_request(http_req_handler& request) {
+void http_server_v1_1::handle_request(http_req_handler& request) {
 
 	//increment request number
 	request_counter++;
 
 	//check the method if it was supported or not
 	if(request.get_http_method() == HTTP_METHOD_NOT_IMPLEMENTED) {
-		responder.set_http_version(HTTP_V1_0)
+		responder.set_http_version(HTTP_V1_1)
 		->set_http_statuscode("405 Method Not Allowed")
 		->send_response();
 		return;
@@ -55,7 +58,7 @@ void http_server_v1_0::handle_request(http_req_handler& request) {
 		//try to open the file if existed
 		FILE * fp;
 		if((fp = fopen(file_path.c_str(), "r")) == NULL) {
-			responder.set_http_version(HTTP_V1_0)
+			responder.set_http_version(HTTP_V1_1)
 			->set_http_statuscode("404 Not Found")
 			->send_response();
 			return;
@@ -66,9 +69,10 @@ void http_server_v1_0::handle_request(http_req_handler& request) {
     	int fd;
     	if (((fd = open (file_path.c_str(), O_RDONLY)) < 0) || (fstat(fd, &filestat) < 0)) {
     		close(fd);
-			responder.set_http_version(HTTP_V1_0)
+			responder.set_http_version(HTTP_V1_1)
 			->set_http_statuscode("500 Internal Server Error")
 			->send_response();
+			terminated = true;
 			return;
     	}
     	close(fd);
@@ -78,16 +82,18 @@ void http_server_v1_0::handle_request(http_req_handler& request) {
 		//read the data from the file
 		char* data_buffer = (char*) malloc(filestat.st_size+1);
 		if(data_buffer == NULL) {
-			responder.set_http_version(HTTP_V1_0)
+			responder.set_http_version(HTTP_V1_1)
 			->set_http_statuscode("500 Internal Server Error")
 			->send_response();
+			terminated = true;
 			return;
 		}
 		if(fread(data_buffer, filestat.st_size, 1, fp) == filestat.st_size) {
-			responder.set_http_version(HTTP_V1_0)
+			responder.set_http_version(HTTP_V1_1)
 			->set_http_statuscode("500 Internal Server Error")
 			->send_response();
 			free(data_buffer);
+			terminated = true;
 			return;
 		}
 		data_buffer[filestat.st_size] = '\0';
@@ -95,7 +101,7 @@ void http_server_v1_0::handle_request(http_req_handler& request) {
 		stringstream integer_converter;
 		integer_converter << filestat.st_size;
 
-		responder.set_http_version(HTTP_V1_0)
+		responder.set_http_version(HTTP_V1_1)
 		->set_http_statuscode("200 OK")
 		->add_header("Content-Length: " + integer_converter.str())
 		->add_header(types_mng.generate_file_header(file_path))
@@ -111,14 +117,14 @@ void http_server_v1_0::handle_request(http_req_handler& request) {
 
 		//the length of the received file
 		if(request.get_header_value("Content-Length") == "") {
-			responder.set_http_version(HTTP_V1_0)
+			responder.set_http_version(HTTP_V1_1)
 			->set_http_statuscode("411 Length Required")
 			->send_response();
 			return;
 		}
 
 		if(!types_mng.is_file_supported(request.get_http_url_target())) {
-			responder.set_http_version(HTTP_V1_0)
+			responder.set_http_version(HTTP_V1_1)
 			->set_http_statuscode("415 Unsupported Media Type")
 			->send_response();
 			return;
@@ -129,23 +135,24 @@ void http_server_v1_0::handle_request(http_req_handler& request) {
 		expected_post = strtol (request.get_header_value("Content-Length").c_str(),&pEnd,10);
 		post_url = request.get_http_url_target();
 		//TODO limit the posted file //413 Payload Too Large
-		responder.set_http_version(HTTP_V1_0)
+		responder.set_http_version(HTTP_V1_1)
 		->set_http_statuscode("200 OK")
 		->send_response();
 	}
 
 }
 
-void http_server_v1_0::handle_data(const uint8_t* data, uint32_t data_length)  {
+void http_server_v1_1::handle_data(const uint8_t* data, uint32_t data_length)  {
 
 	//increment request number
 	request_counter++;
 
 	//server give data less than wanted
 	if(expected_post != data_length || !expected_post) {
-		responder.set_http_version(HTTP_V1_0)
+		responder.set_http_version(HTTP_V1_1)
 		->set_http_statuscode("500 Internal Server Error")
 		->send_response();
+		terminated = true;
 		return;
 	}
 
@@ -169,9 +176,10 @@ void http_server_v1_0::handle_data(const uint8_t* data, uint32_t data_length)  {
 	FILE * fp = fopen(base_dir.c_str(), "w");
 	//check if error while creating the file
 	if(fp == NULL) {
-		responder.set_http_version(HTTP_V1_0)
+		responder.set_http_version(HTTP_V1_1)
 		->set_http_statuscode("500 Internal Server Error")
 		->send_response();
+		terminated = true;
 		return;
 	}
 
@@ -183,16 +191,16 @@ void http_server_v1_0::handle_data(const uint8_t* data, uint32_t data_length)  {
 	expected_post = 0;
 
 	//send last 200Ok
-	responder.set_http_version(HTTP_V1_0)
+	responder.set_http_version(HTTP_V1_1)
 	->set_http_statuscode("200 OK")
 	->send_response();
 	return;
 }
 
-bool http_server_v1_0::is_end() {
-	return !(request_counter == 0 || (request_counter == 1 && expected_post > 0));
+bool http_server_v1_1::is_end() {
+	return terminated;
 }
 
-int http_server_v1_0::bypass_request_checking() {
+int http_server_v1_1::bypass_request_checking() {
 	return expected_post;
 }

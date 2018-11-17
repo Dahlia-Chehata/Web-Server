@@ -17,10 +17,32 @@
 #include "http_utils.h"
 #include "sock_RAII.h"
 #include "http_server_1_0.h"
+#include "http_server_1_1.h"
 #include "http_server.h"
 #include "http_responder.h"
 
 using namespace std;
+
+vector<string> split_text (string text, const std::string& delimiter) {
+
+    size_t pos = 0;
+    string token;
+    std::vector<std::string> splited_text;
+
+    while ((pos = text.find(delimiter)) != string::npos) {
+        token = text.substr(0, pos);
+        if(token.length() > 0) {
+            splited_text.push_back(token);
+        }
+        text.erase(0, pos + delimiter.length());
+    }
+
+    if(text.length() > 0) {
+        splited_text.push_back(text);
+    }
+
+    return splited_text;
+}
 
 /**
  * this function will take as a parameter the received data from
@@ -158,7 +180,7 @@ void handle_connection(int sock_fd) {
     */
     http_server* curr_server;
     http_server_v1_0 serv_1_0(sock_fd);
-    //http_server_v1_1 serv_1_1(sock_fd);
+    http_server_v1_1 serv_1_1(sock_fd);
 
     while(1) {
 
@@ -212,7 +234,7 @@ void handle_connection(int sock_fd) {
                 curr_server = &serv_1_0;
             }
             else if(requests_handlers[i].get_http_version() == HTTP_VERSION_HTTP1_1) {
-                curr_server = &serv_1_0;
+                curr_server = &serv_1_1;
             }
             else {
                 responder.set_http_version(HTTP_V1_1)
