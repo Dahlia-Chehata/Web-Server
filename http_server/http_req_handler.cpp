@@ -28,6 +28,11 @@ void http_req_handler::parse_request() {
     http_version = get_http_version_pv(fline_parameters[2]);
     target = fline_parameters[1];
 
+    size_t qm_index = target.find_last_of("?");
+    if(qm_index != string::npos) {
+        target = target.substr(0, qm_index);
+    }
+
     /* handle the headers of the request */
     for(int i=1; i<lines.size(); i++) {
         vector<string> type_val = split_text(lines[i], ": ");

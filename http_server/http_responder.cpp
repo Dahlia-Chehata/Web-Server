@@ -116,10 +116,19 @@ bool http_responder::send_response() {
 	string head = http_version + " " + status_code + CRLF;
 	totally_send(head.c_str(), head.length());
 
+	//add content-length header
+	if(data_ == NULL && data == "") {
+		headers.push_back(string("Content-Length: 0") + CRLF);
+	}
+
+	//add status code header
+	headers.push_back("Status: " + status_code + CRLF);
+
 	//send the headers
 	for(const auto& header: headers) {
 		totally_send(header.c_str(), header.length());
 	}
+
 
 	//end the header
 	totally_send(CRLF, strlen(CRLF));

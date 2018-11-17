@@ -50,19 +50,40 @@ void http_server_v1_1::handle_request(http_req_handler& request) {
 		string base_dir = "./web";
 		string file_path = base_dir + request.get_http_url_target();
 
-		//handle index file
-		if(file_path == base_dir + "/") {
+		//handle index files
+		if(file_path[file_path.length()-1] == '/') {
 			file_path += "index.html";
 		}
 
-		//try to open the file if existed
 		FILE * fp;
-		if((fp = fopen(file_path.c_str(), "r")) == NULL) {
-			responder.set_http_version(HTTP_V1_1)
-			->set_http_statuscode("404 Not Found")
-			->send_response();
-			return;
+		//check if supported file first.
+		if(types_mng.is_file_supported(file_path)) {
+			//try to open the file if existed
+			if((fp = fopen(file_path.c_str(), "r")) == NULL) {	
+				responder.set_http_version(HTTP_V1_1)
+				->set_http_statuscode("404 Not Found")
+				->send_response();
+				return;
+			}
+		} else {
+			//treat it as directory and try again
+			string new_file_path = file_path + "/index.html";
+			if((fp = fopen(new_file_path.c_str(), "r")) == NULL) {
+				responder.set_http_version(HTTP_V1_1)
+				->set_http_statuscode("404 Not Found")
+				->send_response();
+				return;
+			//if it's a directory, then redirect the user to the directory url
+			} else {
+				fclose(fp);
+				responder.set_http_version(HTTP_V1_1)
+				->set_http_statuscode("301 Moved Permanently")
+				->add_header("Location: " + request.get_http_url_target() + "/")
+				->send_response();
+				return;
+			}
 		}
+
 
 		//get it's dimensions
     	struct stat filestat;
@@ -73,6 +94,7 @@ void http_server_v1_1::handle_request(http_req_handler& request) {
 			->set_http_statuscode("500 Internal Server Error")
 			->send_response();
 			terminated = true;
+			fclose(fp);
 			return;
     	}
     	close(fd);
@@ -86,6 +108,7 @@ void http_server_v1_1::handle_request(http_req_handler& request) {
 			->set_http_statuscode("500 Internal Server Error")
 			->send_response();
 			terminated = true;
+			fclose(fp);
 			return;
 		}
 		if(fread(data_buffer, filestat.st_size, 1, fp) == filestat.st_size) {
@@ -94,6 +117,7 @@ void http_server_v1_1::handle_request(http_req_handler& request) {
 			->send_response();
 			free(data_buffer);
 			terminated = true;
+			fclose(fp);
 			return;
 		}
 		data_buffer[filestat.st_size] = '\0';
@@ -109,6 +133,7 @@ void http_server_v1_1::handle_request(http_req_handler& request) {
 		->send_response();
 
 		free(data_buffer);
+		fclose(fp);
 		return;
 	}
 
