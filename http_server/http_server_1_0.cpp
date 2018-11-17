@@ -1,22 +1,4 @@
-#include <vector>
-#include <string>
-#include <iostream>
-#include <sstream>
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-
-#include "http_req_handler.h"
-#include "http_responder.h"
-#include "types_manager.h"
 #include "http_server_1_0.h"
-#include "http_utils.h"
 
 using namespace std;
 
@@ -174,7 +156,7 @@ void http_server_v1_0::handle_data(const uint8_t* data, uint32_t data_length)  {
 	}
 
 	//get the full path to the file. all are directories by the last is file
-	vector<string> path = split_text(post_url, "/");
+	vector<string> path = yaws::split_text(post_url, "/");
 
 	//build directories
 	string base_dir = "./web/";

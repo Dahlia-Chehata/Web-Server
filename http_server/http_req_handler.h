@@ -2,9 +2,11 @@
 #define HTTP_REQUEST_HANDLER_H_
 
 #include <string>
+#include <vector>
 #include <unordered_map>
 
 #include "http_utils.h"
+#include "../utils/string_utils.h"
 
 class http_req_handler
 {

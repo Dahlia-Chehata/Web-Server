@@ -25,6 +25,5 @@ enum HTTP_VERSION {
     HTTP_VERSION_HTTP_UNSUPPORTED
 };
 
-std::vector<std::string> split_text (std::string text, const std::string& delimiter);
 
 #endif // HTTP_UTILS_H_

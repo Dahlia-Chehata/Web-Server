@@ -3,9 +3,9 @@
 
 #include "http_req_handler.h"
 
- /*
- * HTTP interface to be implemented by each HTTP handler.
- */
+ /**
+  * HTTP interface to be implemented by each HTTP handler.
+  */
 class http_server{
 	public:
 		http_server() = default;

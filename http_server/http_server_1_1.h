@@ -1,11 +1,24 @@
 #ifndef HTTP_SERVER_1_1
 #define HTTP_SERVER_1_1
 
+#include <vector>
 #include <string>
+#include <iostream>
+#include <sstream>
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include "http_req_handler.h"
 #include "http_responder.h"
 #include "types_manager.h"
+#include "http_utils.h"
 #include "http_server.h"
 
  /*

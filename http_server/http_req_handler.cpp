@@ -1,8 +1,3 @@
-#include <string>
-#include <vector>
-#include <unordered_map>
-
-#include "http_utils.h"
 #include "http_req_handler.h"
 
 using namespace std;
@@ -12,13 +7,13 @@ void http_req_handler::parse_request() {
     valid = 0;  //default as invalid request
 
     //break the request string into lines
-    vector<string> lines = split_text(request, CRLF);
+    vector<string> lines = yaws::split_text(request, CRLF);
     if(lines.size() == 0) {
         return; //malformed request
     }
 
     /* handle the first line */
-    vector<string> fline_parameters = split_text(lines[0], " ");
+    vector<string> fline_parameters = yaws::split_text(lines[0], " ");
     if(fline_parameters.size() != 3) {
         return; //malformed request
     }
@@ -35,7 +30,7 @@ void http_req_handler::parse_request() {
 
     /* handle the headers of the request */
     for(int i=1; i<lines.size(); i++) {
-        vector<string> type_val = split_text(lines[i], ": ");
+        vector<string> type_val = yaws::split_text(lines[i], ": ");
         if(type_val.size() != 2){
             return; //malformed head
         }

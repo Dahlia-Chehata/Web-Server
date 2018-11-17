@@ -3,8 +3,8 @@
 
 #include <string.h>
 
- /*
- * validate file types sent to the server and generate http header
+/**
+ * Validate file types sent to the server and generate http header
  * for the specific data type
  */
 class types_manager{

@@ -33,6 +33,7 @@ bool rcv_ack_from_server (int sockfd)
     vector<string> response = split_cmd(rcv_pkt);
     return(response[1] == "200");
 }
+
 void send_file_to_server(int sockfd, string filename)
 {
     struct stat file_stat;
