@@ -24,10 +24,10 @@ std::vector <std::string> split_cmd(std::string command)
   std::istream_iterator<std::string> begin(ss),end;
   return  std::vector<std::string> (begin, end);
 }
-bool rcv_ack_from_server (int sockfd);
-void rcv_file_from_server(int sockfd,std::string filename);
+bool rcv_ack_from_server (const int sockfd);
+void rcv_file_from_server(const int sockfd,const std::string &filename);
 void send_file_to_server();
-void send_header_line(int fd,std::string method, std::string filename);
+void send_header_line(const int fd,const std::string &method,const std::string &filename);
 std::string get_file_type(std::string file_name);
 
 #endif /* CLIENT_H */

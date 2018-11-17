@@ -4,6 +4,7 @@
  * and open the template in the editor.
  */
 #include "client.h"
+#include "../http_server/types_manager.h"
 #include <iostream>
 #include <errno.h>
 #include <fstream>
@@ -25,7 +26,7 @@
 
 using namespace std;
 
-bool rcv_ack_from_server (int sockfd)
+bool rcv_ack_from_server (const int sockfd)
 {
     char rcv_pkt[MAXDATA];
     recv(sockfd, rcv_pkt, MAXDATA, 0);
@@ -33,8 +34,7 @@ bool rcv_ack_from_server (int sockfd)
     vector<string> response = split_cmd(rcv_pkt);
     return(response[1] == "200");
 }
-
-void send_file_to_server(int sockfd, string filename)
+void send_file_to_server(const int sockfd,const string &filename)
 {
     struct stat file_stat;
     char file_size[256];
@@ -73,7 +73,7 @@ void send_file_to_server(int sockfd, string filename)
       cout << "remain data = " << remain_data << endl;
     }
 }
-void rcv_file_from_server(int sockfd,string filename)
+void rcv_file_from_server(const int sockfd,const string &filename)
 {
 char httpmsg[MAXDATA];
     FILE *received_file;
@@ -114,20 +114,20 @@ char httpmsg[MAXDATA];
 
 fclose(received_file);
 }
-void send_header_line (int fd,string method,string filename)
+void send_header_line (const int fd,const string & method,const string &filename)
 {
     string msg = method + " " + filename + " HTTP/1.0\r\n";
-    msg += "Content-Type: " + get_file_type(filename) + "text/html\r\n";
+    msg += "Content-Type: " + types_manager().generate_file_header(filename)+ "text/html\r\n";
     msg += "\r\n";
     //used when socket in a connected state
     send(fd, msg.c_str(), MAXDATA, 0);
 }
-std::string get_file_type(std::string filename)
-{
-    if (filename.compare(filename.size() - 3, 3, "jpg") == 0) return "image/jpg";
-    else if (filename.compare(filename.size() - 3, 4, "html") == 0) return "text/html";
-    else return "text/plain";
-}
+//std::string get_file_type(std::string filename)
+//{
+//    if (filename.compare(filename.size() - 3, 3, "jpg") == 0) return "image/jpg";
+//    else if (filename.compare(filename.size() - 3, 4, "html") == 0) return "text/html";
+//    else return "text/plain";
+//}
 int main(int argc, char *argv[]) {
     string command;
     int sockfd, status;
