@@ -1,6 +1,6 @@
+POST /home/aaa/CLionProjects/yaws/http_client/2.jpg localhost
+POST /home/aaa/CLionProjects/yaws/http_client/test.html localhost
+GET /index.html localhost 7070
 GET /1.jpg localhost 7070
 GET /404.html localhost 7070
-GET /index.html localhost 7070
 GET /ipsum.html localhost
-POST /2.jpg localhost
-POST /test.html localhost

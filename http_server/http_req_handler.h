@@ -33,7 +33,6 @@ public:
 
     http_req_handler(const std::string& request);
     ~http_req_handler();
-
     HTTP_METHOD get_http_method();
     HTTP_VERSION get_http_version();
     std::string get_http_url_target();

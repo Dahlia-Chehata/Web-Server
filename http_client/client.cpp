@@ -47,7 +47,7 @@ void send_file_to_server(const int sockfd,const string &filename)
     //establish the connection between file and file descriptor read only
     int fd = open(filename.c_str(), O_RDONLY);
     if (fd == -1) {
-        fprintf(stderr, "Error opening file %s", strerror(errno));
+        fprintf(stderr, "Error opening file %s \n", strerror(errno));
         exit(EXIT_FAILURE);
     }
     //fstat() stats the file pointed to by file descriptor fd and fills in buffer file_stat.
@@ -68,10 +68,6 @@ void send_file_to_server(const int sockfd,const string &filename)
     offset = 0;
     remain_data = file_stat.st_size;
     cout << "file size = " << file_size << endl;
-//    while (((sent_bytes = sendfile(sockfd, fd, &offset, MAXDATA)) > 0) && (remain_data > 0)) {
-//        remain_data -= sent_bytes;
-//        cout << "remain data = " << remain_data << endl;
-//    }
 
     while (((remain_data > MAXDATA) && (sent_bytes = sendfile(sockfd, fd, &offset, MAXDATA)) > 0)  ) {
       remain_data -= sent_bytes;
@@ -125,21 +121,24 @@ void rcv_file_from_server(const int sockfd,const string &filename)
 
   fclose(received_file);
 }
-void send_header_line (const int fd,const string & method,const string &filename)
+void send_header_line (const int fd,const string & method,string &filename)
 {
-    types_manager tp;
+    types_manager tp=types_manager();
     string msg = method + " " + filename + " HTTP/1.0\r\n";
-    msg += "Content-Type: " + get_file_type(filename)+ "text/html\r\n";
+    msg += tp.generate_file_header(filename)+ "\r\n";
+    if (method =="POST")
+      msg += "Content-Length: " + to_string(file_size(filename.c_str())) + "\r\n";
     msg += "\r\n";
     //used when socket in a connected state
+    cout<<msg<<endl;
     send(fd, msg.c_str(), strlen(msg.c_str()), 0);
 }
-std::string get_file_type(std::string filename)
-{
-    if (filename.compare(filename.size() - 3, 3, "jpg") == 0) return "image/jpg";
-    else if (filename.compare(filename.size() - 3, 4, "html") == 0) return "text/html";
-    else return "text/plain";
-}
+/**
+ *
+ * @param argc
+ * @param argv
+ * @return
+ */
 int main(int argc, char *argv[]) {
     string command;
     int sockfd, status;
@@ -175,6 +174,11 @@ int main(int argc, char *argv[]) {
 
     clock_t begin = clock();
 
+    // connect() system call
+    if (connect(sockfd, res->ai_addr, res->ai_addrlen) == -1) {
+        perror("client: connect");
+        exit(1);
+    }
 
     // Process the commands
     ifstream commandsfile ("commands.txt", ios::in);
