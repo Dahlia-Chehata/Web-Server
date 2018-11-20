@@ -16,7 +16,7 @@ HTTP_SRV_DIR_FILES = $(HTTP_SRV_DIR)/conn_main_handler.o $(HTTP_SRV_DIR)/http_re
 all: $(TARGET)
 
 yaws_client: client.cpp
-	$(CC) $(CFLAGS) http_client/client.cpp http_server/types_manager.cpp -o yaws_client
+	$(CC) $(CFLAGS) client.cpp -o yaws_client
 	
 yaws_server: main.o yaws_server.o conn_worker.o $(HTTP_SRV_DIR_FILES)
 	$(CC) $(CFLAGS) -o yaws_server main.o yaws_server.o conn_worker.o $(HTTP_SRV_DIR_FILES)

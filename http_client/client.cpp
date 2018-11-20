@@ -20,6 +20,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/sendfile.h>
+#include <zconf.h>
 
 
 #define MAXDATA 1024
@@ -58,13 +59,13 @@ void send_file_to_server(const int sockfd,const string &filename)
     // get the file_stat size
     sprintf(file_size, "%jd", file_stat.st_size);
 
-    // send file size
-    bytes = send(sockfd, file_size, sizeof(file_size), 0);
-    if (bytes < 0)
-    {
-        fprintf(stderr, "Error on sending file size %s", strerror(errno));
-        exit(EXIT_FAILURE);
-    }
+//    // send file size
+//    bytes = send(sockfd, file_size, sizeof(file_size), 0);
+//    if (bytes < 0)
+//    {
+//        fprintf(stderr, "Error on sending file size %s", strerror(errno));
+//        exit(EXIT_FAILURE);
+//    }
     offset = 0;
     remain_data = file_stat.st_size;
     cout << "file size = " << file_size << endl;
@@ -130,7 +131,6 @@ void send_header_line (const int fd,const string & method,string &filename)
       msg += "Content-Length: " + to_string(file_size(filename.c_str())) + "\r\n";
     msg += "\r\n";
     //used when socket in a connected state
-    cout<<msg<<endl;
     send(fd, msg.c_str(), strlen(msg.c_str()), 0);
 }
 /**
@@ -160,30 +160,30 @@ int main(int argc, char *argv[]) {
         port_number=argv[2];
     }
 
-    // getaddrinfo() system call
-    if ((status = getaddrinfo(argv[1], port_number, &hints, &res)) != 0) {
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
-        exit(1);
-    }
-
-    // socket() system call
-    if ((sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol)) == -1) {
-        perror("client: socket");
-        exit(1);
-    }
-
-    clock_t begin = clock();
-
-    // connect() system call
-    if (connect(sockfd, res->ai_addr, res->ai_addrlen) == -1) {
-        perror("client: connect");
-        exit(1);
-    }
-
     // Process the commands
     ifstream commandsfile ("commands.txt", ios::in);
     if(commandsfile.is_open()) {
+
         while(getline(commandsfile, command)) {
+
+            // getaddrinfo() system call
+            if ((status = getaddrinfo(argv[1], port_number, &hints, &res)) != 0) {
+                fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
+                exit(1);
+            }
+            // socket() system call
+            if ((sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol)) == -1) {
+                perror("client: socket");
+                exit(1);
+            }
+
+            clock_t begin = clock();
+
+            // connect() system call
+            if (connect(sockfd, res->ai_addr, res->ai_addrlen) == -1) {
+                perror("client: connect");
+                exit(1);
+            }
             vector<string> splitted_cmd = split_cmd(command);
             send_header_line(sockfd, splitted_cmd[0], splitted_cmd[1]);
             bool positive_ack = rcv_ack_from_server(sockfd);
@@ -200,18 +200,18 @@ int main(int argc, char *argv[]) {
                     cout << "Error in POST of file " << splitted_cmd[1] << endl;
                 }
             }
+            clock_t end = clock();
+            double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+            cout << "-------------------------------------------" << endl;
+            cout << "\nElapsed time = " << elapsed_secs << " secs\n" << endl;
+            cout << "-------------------------------------------" << endl;
+            // Close the TCPConnection
+            freeaddrinfo(res);
+            shutdown(sockfd, 2);
         }
         commandsfile.close();
     }
 
-    clock_t end = clock();
-    double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-    cout << "-------------------------------------------" << endl;
-    cout << "\nElapsed time = " << elapsed_secs << " secs\n" << endl;
-    cout << "-------------------------------------------" << endl;
 
-    // Close the TCPConnection
-    freeaddrinfo(res);
-    shutdown(sockfd, 2);
     return 0;
 }
