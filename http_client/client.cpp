@@ -31,7 +31,7 @@ using namespace std;
 bool rcv_ack_from_server (const int sockfd)
 {
     char rcv_pkt[MAXDATA];
-    recv(sockfd, rcv_pkt, MAXDATA,0); //MSG_PEEK option doesn't remove data from buffer
+    recv(sockfd, rcv_pkt, MAXDATA,MSG_PEEK); //MSG_PEEK option doesn't remove data from buffer
     cout << "ack " << rcv_pkt << endl;
     vector<string> response = split_cmd(rcv_pkt);
     return(response[1] == "200");
@@ -236,14 +236,14 @@ int main(int argc, char *argv[]) {
             }
             vector<string> splitted_cmd = split_cmd(command);
             send_header_line(sockfd, splitted_cmd[0], splitted_cmd[1]);
-            bool positive_ack = rcv_ack_from_server(sockfd);
+          //  bool positive_ack = rcv_ack_from_server(sockfd);
             if (splitted_cmd[0] == "GET") {
                  rcv_file_from_server(sockfd, splitted_cmd[1]);
             } else if (splitted_cmd[0] == "POST") {
-              if (positive_ack)
+//           if (positive_ack)
                   send_file_to_server(sockfd, splitted_cmd[1]);
-               else
-                printf("ERROR in POST");
+//               else
+//                printf("ERROR in POST");
             }
             clock_t end = clock();
             double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
