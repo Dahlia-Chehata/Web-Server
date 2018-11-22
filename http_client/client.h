@@ -18,6 +18,10 @@
 #include <fstream>
 #include <vector>
 #include <iterator>
+#include <sys/socket.h>
+#define MAXDATA 100
+
+
 /**
  * split the commands : GET / POST
  * @param command
@@ -50,7 +54,7 @@ bool rcv_ack_from_server (const int sockfd);
  * @param sockfd
  * @param filename
  */
-void rcv_file_from_server(const int sockfd,const std::string &filename);
+void rcv_file_from_server(const int sockfd,std::string &filename);
 /**
  * receive file from server in case of POSt method
  * @param sockfd

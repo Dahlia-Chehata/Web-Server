@@ -21,9 +21,9 @@
 #include <fcntl.h>
 #include <sys/sendfile.h>
 #include <zconf.h>
+#include <unistd.h>
 
 
-#define MAXDATA 1024
 #define PORT "80"
 
 using namespace std;
@@ -31,7 +31,7 @@ using namespace std;
 bool rcv_ack_from_server (const int sockfd)
 {
     char rcv_pkt[MAXDATA];
-    recv(sockfd, rcv_pkt, MAXDATA, 0);
+    recv(sockfd, rcv_pkt, MAXDATA,0); //MSG_PEEK option doesn't remove data from buffer
     cout << "ack " << rcv_pkt << endl;
     vector<string> response = split_cmd(rcv_pkt);
     return(response[1] == "200");
@@ -58,77 +58,127 @@ void send_file_to_server(const int sockfd,const string &filename)
     }
     // get the file_stat size
     sprintf(file_size, "%jd", file_stat.st_size);
-
-//    // send file size
-//    bytes = send(sockfd, file_size, sizeof(file_size), 0);
-//    if (bytes < 0)
-//    {
-//        fprintf(stderr, "Error on sending file size %s", strerror(errno));
-//        exit(EXIT_FAILURE);
-//    }
     offset = 0;
     remain_data = file_stat.st_size;
     cout << "file size = " << file_size << endl;
 
-    while (((remain_data > MAXDATA) && (sent_bytes = sendfile(sockfd, fd, &offset, MAXDATA)) > 0)  ) {
+    while (((remain_data > 0) && (sent_bytes = sendfile(sockfd, fd, &offset, MAXDATA)) > 0)  ) {
       remain_data -= sent_bytes;
       cout << "remain data = " << remain_data << endl;
     }
-    if (remain_data)
-    {
-        sendfile(sockfd, fd, &offset, remain_data);
-        cout << "remain data = 0" << endl;
-    }
+//    if (remain_data)
+//    {
+//        sendfile(sockfd, fd, &offset, remain_data);
+//        cout << "remain data = 0" << endl;
+//    }
 }
-void rcv_file_from_server(const int sockfd,const string &filename)
-{
+//void gotoxy(int x,int y)
+//{
+//    printf("%c[%d;%df",0x1B,y,x);
+//}
+//void rcv_file_from_server(const int sockfd,string &filename)
+//{
+//    /* Create file where data will be stored */
+//    int bytesReceived = 0;
+//    char recvBuff[256];
+//    memset(recvBuff, '0', sizeof(recvBuff));
+//    FILE *fp;
+//    read(sockfd, strdup(filename.c_str()), 1);
+//    //strcat(fname,"AK");
+//    printf("File Name: %s\n",filename.c_str());
+//    printf("Receiving file...\n");
+//    fp = fopen(filename.c_str(), "ab");
+//    if(NULL == fp)
+//    {
+//        printf("Error opening file\n");
+//        exit(1);
+//    }
+//    long double sz=1;
+//    /* Receive data in chunks of 256 bytes */
+//    while((bytesReceived = read(sockfd, recvBuff, 1024)) > 0)
+//    {
+//        sz++;
+//        gotoxy(0,4);
+//        printf("Received: %llf Mb",(sz/1024));
+//      //  fflush(stdout);
+//        // recvBuff[n] = 0;
+//        fwrite(recvBuff, 1,bytesReceived,fp);
+//        fflush(stdout);
+//        // printf("%s \n", recvBuff);
+//    }
+//    fclose(fp);
+//
+//    if(bytesReceived < 0)
+//    {
+//        printf("\n Read Error \n");
+//    }
+//    printf("\nFile OK....Completed\n");
+//}
+void rcv_file_from_server(const int sockfd, string &filename) {
     char httpmsg[MAXDATA];
     FILE *received_file;
-    int file_size, remain_data, bytes;
+    int remain_data,
+     bytes,total_rcv;
 
-    // receive file size
-    recv(sockfd, httpmsg, MAXDATA, 0);
-    file_size=atoi(httpmsg);
+    const string &path = ("../web/" + filename);
+    received_file = fopen(path.c_str(), "r");
 
-    received_file = fopen(filename.c_str(), "w");
     if (received_file == NULL) {
         fprintf(stderr, "Failed to open file %s\n", strerror(errno));
-
         exit(EXIT_FAILURE);
     }
 
-    remain_data = file_size;
-    cout << "File size = " << file_size << endl;
+    remain_data = stoi(to_string(file_size(path.c_str())));
+    printf("file :%s of size : %d \n", filename.c_str(), remain_data);
 
     // receive file data
-    while (remain_data > MAXDATA) {
-        bytes = recv(sockfd, httpmsg, MAXDATA, 0);
-        fwrite(httpmsg, sizeof(char), bytes, received_file);
-        remain_data -= bytes;
-        fprintf(stdout, "Receive %d bytes and we hope :- %d bytes\n", bytes, remain_data);
-    }
-
-    while (remain_data > 0) {
-        bytes = recv(sockfd, httpmsg, remain_data, 0);
-        fwrite(httpmsg, sizeof(char), bytes, received_file);
-        remain_data -= bytes;
-        fprintf(stdout, " %d bytes received and %d bytes remaining\n", bytes, remain_data);
-
-        if(bytes == 0) {
+    while (1) {
+        bytes = recv(sockfd, httpmsg+total_rcv, MAXDATA-total_rcv, 0);
+        if (bytes == -1) {
+            perror("recv");
+            exit(EXIT_FAILURE);
+        }
+        if (bytes == 0) {
             cout << "Problem in receiving the rest of the data" << endl;
             break;
         }
-    }
+        if (fwrite(httpmsg, sizeof(char), bytes, received_file) == -1) {
+            fprintf(stderr, "Failed to write file %s\n", strerror(errno));
+            exit(EXIT_FAILURE);
 
-  fclose(received_file);
+        }
+        if (bytes>0)
+        total_rcv += bytes;
+        fprintf(stdout, " %d bytes received and %d bytes remaining\n", bytes, remain_data=remain_data-bytes);
+    }
+    fclose(received_file);
 }
+
 void send_header_line (const int fd,const string & method,string &filename)
 {
+    struct stat file_stat;
+    if (fd == -1) {
+        fprintf(stderr, "Error opening file %s \n", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+    //fstat() stats the file pointed to by file descriptor fd and fills in buffer file_stat.
+    if (fstat(fd, &file_stat) < 0) {
+        fprintf(stderr, "Error fstat --> %s", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
     types_manager tp=types_manager();
     string msg = method + " " + filename + " HTTP/1.0\r\n";
     msg += tp.generate_file_header(filename)+ "\r\n";
-    if (method =="POST")
-      msg += "Content-Length: " + to_string(file_size(filename.c_str())) + "\r\n";
+    if (method =="POST") {
+        string siz=to_string(file_size(filename.c_str()));
+        if (siz=="-1")
+        {
+            fprintf(stderr, "Error opening file %s \n", strerror(errno));
+            exit(EXIT_FAILURE);
+        }
+        else
+        msg += "Content-Length: " + siz + "\r\n";
+    }
     msg += "\r\n";
     //used when socket in a connected state
     send(fd, msg.c_str(), strlen(msg.c_str()), 0);
@@ -188,17 +238,12 @@ int main(int argc, char *argv[]) {
             send_header_line(sockfd, splitted_cmd[0], splitted_cmd[1]);
             bool positive_ack = rcv_ack_from_server(sockfd);
             if (splitted_cmd[0] == "GET") {
-                if(positive_ack) {
-                    rcv_file_from_server(sockfd, splitted_cmd[1]);
-                } else {
-                    cout << "Error 404 file not found" << endl;
-                }
+                 rcv_file_from_server(sockfd, splitted_cmd[1]);
             } else if (splitted_cmd[0] == "POST") {
-                if(positive_ack) {
-                    send_file_to_server(sockfd, splitted_cmd[1]);
-                } else {
-                    cout << "Error in POST of file " << splitted_cmd[1] << endl;
-                }
+              if (positive_ack)
+                  send_file_to_server(sockfd, splitted_cmd[1]);
+               else
+                printf("ERROR in POST");
             }
             clock_t end = clock();
             double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
