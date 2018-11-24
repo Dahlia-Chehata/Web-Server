@@ -169,13 +169,19 @@ void http_server_v1_1::handle_data(const uint8_t* data, uint32_t data_length)  {
 	//build directories
 	string base_dir = "./web/";
 	for(int i=0; i<path.size()-1; i++) {
-		base_dir += path[i];
+		base_dir += path[i] + "/";
+		//check if dir already there
+		DIR* dir = opendir(base_dir.c_str());
+		if (dir) {
+		    /* Directory exists*/
+		    closedir(dir);
+		    continue;
+		}
 		//check if error while creating the directory
 		if(mkdir(base_dir.c_str(), 0700) == -1) {
 			//TODO respond with 500 internal error
 			return;
 		}
-		base_dir += "/";
 	}
 
 	//create the file
