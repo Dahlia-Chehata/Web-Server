@@ -164,17 +164,20 @@ void rcv_file_from_server(const int sockfd, string &filename) {
     }
 
     //data
+    cout<< filename<<'\n'<<'\n';
     printf("%s\n", httpmsg);
-    printf("%d\n", header_end);
-    printf("%d\n", length_pointer);
-    printf("%d\n", size_of_payload);
-    printf("%d\n", remain_data);
-    printf("%d\n", bytes);
+    printf("%d header end \n", header_end);
+    printf("%d pointer length \n", length_pointer);
+    printf("%d size of payload \n", size_of_payload);
+    printf("%d remaining data \n", remain_data);
+    printf("%d received bytes\n", bytes);
 
     //get the rest of the file
     while(remain_data > 0) {
 
         bytes = recv(sockfd, httpmsg, min(MAXDATA, remain_data), 0);
+        printf("%d received bytes\n", bytes);
+
         if (bytes == -1) {
             fprintf(stdout, "Socket closed before file receive.");
             exit(EXIT_FAILURE);
