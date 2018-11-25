@@ -92,7 +92,7 @@ int streq(const char* s1, const char* s2) {
         }
         counter++;
     }
-    return 1;
+    return s2[counter] == '\0';
 }
 
 void rcv_file_from_server(const int sockfd, string &filename) {

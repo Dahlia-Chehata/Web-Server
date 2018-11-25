@@ -28,6 +28,17 @@ using namespace std;
 
 atomic<uint32_t> connections_number__;
 
+static int streq(const char* s1, const char* s2) {
+    int counter = 0;
+    while(s1[counter] != '\0' && s2[counter] != '\0') {
+        if(s1[counter] != s2[counter]) {
+            return 0;
+        }
+        counter++;
+    }
+    return s2[counter] == '\0';
+}
+
 /**
  * this function will take as a parameter the received data from
  * the client and try to divide it to multiple requests which
@@ -42,7 +53,7 @@ static vector<string> sub_requests (const uint8_t* received_data, uint16_t data_
     for(int i=0; i<data_size; i++) {
     
         //check if in end of request
-        if(strcmp((const char*)(received_data + i), CRLFCRLF) == 0) {
+        if(streq((const char*)(received_data + i), CRLFCRLF) == 1) {
             
             //advance the pointer
             i += strlen(CRLFCRLF) - 1;
@@ -223,7 +234,6 @@ void handle_connection(int sock_fd) {
 
         //get the HTTP requests out of the received data
         vector<string> requests_string = sub_requests(buffer.get(), total_buffered_data);
-
         yaws::log_new_request(requests_string);
 
         //fix the start of the buffer and the buffer itself for the next read
@@ -237,7 +247,9 @@ void handle_connection(int sock_fd) {
 
         //detect malformed requests
         if(requests_handlers.size() != requests_string.size()) {
-            // TODO log the error as malformed request provided by the client.
+            responder.set_http_version(HTTP_V1_1)
+            ->set_http_statuscode("MALFORMED REQUEST")
+            ->send_response();
             return;
         }
 

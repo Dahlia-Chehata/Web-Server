@@ -39,7 +39,7 @@
 
 using namespace std;
 
-atomic<int> counter;
+atomic<int> counter, end_reading;
 
 struct thread_data{
 int sockfd;
@@ -158,110 +158,121 @@ int streq(const char* s1, const char* s2) {
         }
         counter++;
     }
-    return 1;
+    return s2[counter] == '\0';
 }
 
 void *rcv_file(void* threadarg) {
 
-    struct thread_data *mydata;
-    mydata = (struct thread_data *) threadarg;
-    char httpmsg[MAXDATA];
-    FILE *received_file;
-    int remain_data,
-            bytes, size_of_payload;
-    int header_end = -1;
-    if (counter <0 ) pthread_yield();
-    string filename=q.dequeue();
-    const string &path = ("./http_client/" + filename);
-    counter--;
-    received_file = fopen(path.c_str(), "w");
+    while(1) {
+        struct thread_data *mydata;
+        mydata = (struct thread_data *) threadarg;
+        cout << mydata->sockfd << endl;
+        char httpmsg[MAXDATA];
+        FILE *received_file;
+        int remain_data,
+                bytes, size_of_payload;
+        int header_end = -1;
 
-    if (received_file == NULL) {
-        fprintf(stdout, "Failed to open file %s\n", strerror(errno));
-        exit(EXIT_FAILURE);
-    }
+        //check the end of receiving
+        while (counter <= 0  && end_reading == 0) {
+        }
+        if(counter == 0 && end_reading == 1) {
+            pthread_exit(NULL);
+        } 
 
-    //get the header and part/full of the wanted file.
-    while(header_end == -1) {
-        //here we only peek until we are sure that the full header arrived.
-        bytes = recv(mydata->sockfd, httpmsg, MAXDATA-1, MSG_PEEK);
-        //check if full header arrived
+        string filename=q.dequeue();
+        const string &path = ("./client/" + filename);
+        counter--;
+        received_file = fopen(path.c_str(), "w");
+
+        if (received_file == NULL) {
+            fprintf(stdout, "Failed to open file %s\n", strerror(errno));
+            exit(EXIT_FAILURE);
+        }
+
+        //get the header and part/full of the wanted file.
+        while(header_end == -1) {
+            //here we only peek until we are sure that the full header arrived.
+            bytes = recv(mydata->sockfd, httpmsg, MAXDATA-1, MSG_PEEK);
+            //check if full header arrived
+            for(int i=0; i<bytes; i++) {
+                if(streq(httpmsg+i, "\r\n\r\n") == 1) {
+                    header_end = i + strlen("\r\n\r\n");
+                    break;
+                }
+            }
+        }
+
+        //now we will get the data and remove the data from the buffer.
+        bytes = recv(mydata->sockfd, httpmsg, header_end, MSG_WAITALL);
+
+        //terminate the string to be safe to be used in streq() function.
+        httpmsg[bytes] = '\0';
+
+        //find content-length header
+        int length_pointer = -1;
         for(int i=0; i<bytes; i++) {
-            if(streq(httpmsg+i, "\r\n\r\n") == 1) {
-                header_end = i + strlen("\r\n\r\n");
+            if(streq(httpmsg+i, "Content-Length:") == 1) {
+                length_pointer = i + strlen("Content-Length:");
                 break;
             }
         }
-    }
 
-    //now we will get the data and remove the data from the buffer.
-    bytes = recv(mydata->sockfd, httpmsg, header_end, MSG_WAITALL);
-
-    //terminate the string to be safe to be used in streq() function.
-    httpmsg[bytes] = '\0';
-
-    //find content-length header
-    int length_pointer = -1;
-    for(int i=0; i<bytes; i++) {
-        if(streq(httpmsg+i, "Content-Length:") == 1) {
-            length_pointer = i + strlen("Content-Length:");
-            break;
-        }
-    }
-
-    //handle if Content-Length: not found!!
-    if (length_pointer == -1) {
-        fprintf(stdout, "Failed to receive Content-Length");
-        exit(EXIT_FAILURE);
-    }
-
-    size_of_payload = atoi(httpmsg+length_pointer);
-
-
-    //handle if the end of the header not found!!
-    if (header_end == -1) {
-        fprintf(stdout, "Header end not found!!");
-        exit(EXIT_FAILURE);
-    }
-
-    //total request size - received bytes
-    remain_data = (size_of_payload + header_end) - bytes;
-
-    //write the first piece of the file
-    if (fwrite(httpmsg+header_end, sizeof(char), bytes - header_end, received_file) == -1) {
-        fprintf(stdout, "Failed to write file %s\n", strerror(errno));
-        exit(EXIT_FAILURE);
-    }
-
-    //data
-    cout<< filename<<'\n'<<'\n';
-    printf("%s\n", httpmsg);
-    printf("%d header end \n", header_end);
-    printf("%d pointer length \n", length_pointer);
-    printf("%d size of payload \n", size_of_payload);
-    printf("%d remaining data \n", remain_data);
-    printf("%d received bytes\n", bytes);
-
-    //get the rest of the file
-    while(remain_data > 0) {
-
-        bytes = recv(mydata->sockfd, httpmsg, min(MAXDATA, remain_data), 0);
-        printf("%d received bytes\n", bytes);
-        if (bytes == -1) {
-            fprintf(stdout, "Socket closed before file receive.");
+        //handle if Content-Length: not found!!
+        if (length_pointer == -1) {
+            fprintf(stdout, "Failed to receive Content-Length");
             exit(EXIT_FAILURE);
         }
 
-        if (fwrite(httpmsg, sizeof(char), bytes, received_file) == -1) {
+        size_of_payload = atoi(httpmsg+length_pointer);
+
+
+        //handle if the end of the header not found!!
+        if (header_end == -1) {
+            fprintf(stdout, "Header end not found!!");
+            exit(EXIT_FAILURE);
+        }
+
+        //total request size - received bytes
+        remain_data = (size_of_payload + header_end) - bytes;
+
+        //write the first piece of the file
+        if (fwrite(httpmsg+header_end, sizeof(char), bytes - header_end, received_file) == -1) {
             fprintf(stdout, "Failed to write file %s\n", strerror(errno));
             exit(EXIT_FAILURE);
-
         }
 
-        remain_data -= bytes;
+        //data
+        cout<< filename<<'\n'<<'\n';
+        printf("%s\n", httpmsg);
+        printf("%d header end \n", header_end);
+        printf("%d pointer length \n", length_pointer);
+        printf("%d size of payload \n", size_of_payload);
+        printf("%d remaining data \n", remain_data);
+        printf("%d received bytes\n", bytes);
+
+        //get the rest of the file
+        while(remain_data > 0) {
+
+            bytes = recv(mydata->sockfd, httpmsg, min(MAXDATA, remain_data), 0);
+            printf("%d received bytes\n", bytes);
+            if (bytes == -1) {
+                fprintf(stdout, "Socket closed before file receive.");
+                exit(EXIT_FAILURE);
+            }
+
+            if (fwrite(httpmsg, sizeof(char), bytes, received_file) == -1) {
+                fprintf(stdout, "Failed to write file %s\n", strerror(errno));
+                exit(EXIT_FAILURE);
+
+            }
+
+            remain_data -= bytes;
+        }
+        cout << "-------------------------------------------" << endl;
+        fclose(received_file);
     }
-    cout << "-------------------------------------------" << endl;
-    fclose(received_file);
+
    pthread_exit(NULL);
 }
 
@@ -291,6 +302,7 @@ void *read_file (void*threadarg)
 {
   struct thread_data *mydata;
   mydata = (struct thread_data *) threadarg;
+  cout << mydata->sockfd << endl;
       string command;
     clock_t begin = clock();
 // Process the commands
@@ -302,8 +314,8 @@ void *read_file (void*threadarg)
             vector<string> splitted_cmd = split_cmd(command);
 
             if (splitted_cmd[0] == "GET") {
-                   counter++;
                    q.enqueue(splitted_cmd[1]);
+                   counter++;
                    send_header_line(mydata->sockfd, splitted_cmd[0], splitted_cmd[1]);
                    cout<<"GET request sent for : "<<splitted_cmd[1]<<endl;
                    cout<<"queue size  : "<<q.size()<<endl;
@@ -316,8 +328,10 @@ void *read_file (void*threadarg)
          }
 
         }
-        commandsfile.close();
-   pthread_exit(NULL);
+
+    end_reading = 1;
+    commandsfile.close();
+    pthread_exit(NULL);
 }
 /**
  *
@@ -355,8 +369,6 @@ int main(int argc, char *argv[]) {
         perror("client: socket");
         exit(1);
     }
-
-
 
     // connect() system call
     if (connect(sockfd, res->ai_addr, res->ai_addrlen) == -1) {
