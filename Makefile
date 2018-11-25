@@ -11,7 +11,8 @@ TARGET = yaws_server yaws_client
 # http_server directory and files
 HTTP_SRV_DIR = http_server
 HTTP_SRV_DIR_FILES = $(HTTP_SRV_DIR)/conn_main_handler.o $(HTTP_SRV_DIR)/http_req_handler.o $(HTTP_SRV_DIR)/sock_RAII.o \
- $(HTTP_SRV_DIR)/http_server_1_0.o $(HTTP_SRV_DIR)/http_server_1_1.o $(HTTP_SRV_DIR)/types_manager.o $(HTTP_SRV_DIR)/http_responder.o
+ $(HTTP_SRV_DIR)/http_server_1_0.o $(HTTP_SRV_DIR)/http_server_1_1.o $(HTTP_SRV_DIR)/types_manager.o \
+ $(HTTP_SRV_DIR)/http_responder.o $(HTTP_SRV_DIR)/atomic_RAII.o
 
 all: $(TARGET)
 
@@ -43,6 +44,9 @@ conn_main_handler.o:  $(HTTP_SRV_DIR)/conn_main_handler.cpp $(HTTP_SRV_DIR)/conn
 
 sock_RAII.o:  $(HTTP_SRV_DIR)/sock_RAII.cpp $(HTTP_SRV_DIR)/sock_RAII.h
 	$(CC) $(CFLAGS) -c $(HTTP_SRV_DIR)/sock_RAII.cpp
+
+atomic_RAII.o:  $(HTTP_SRV_DIR)/atomic_RAII.cpp $(HTTP_SRV_DIR)/atomic_RAII.h
+	$(CC) $(CFLAGS) -c $(HTTP_SRV_DIR)/atomic_RAII.cpp
 
 http_server_1_0.o:  $(HTTP_SRV_DIR)/http_server_1_0.cpp $(HTTP_SRV_DIR)/http_server_1_0.h
 	$(CC) $(CFLAGS) -c $(HTTP_SRV_DIR)/http_server_1_0.cpp
