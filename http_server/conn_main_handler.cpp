@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <time.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -16,6 +17,7 @@
 #include "http_req_handler.h"
 #include "http_utils.h"
 #include "sock_RAII.h"
+#include "atomic_RAII.h"
 #include "http_server_1_0.h"
 #include "http_server_1_1.h"
 #include "http_server.h"
@@ -23,6 +25,8 @@
 #include "../logger.h"
 
 using namespace std;
+
+atomic<uint32_t> connections_number__;
 
 /**
  * this function will take as a parameter the received data from
@@ -162,11 +166,39 @@ void handle_connection(int sock_fd) {
     http_server_v1_0 serv_1_0(sock_fd);
     http_server_v1_1 serv_1_1(sock_fd);
 
+    /*
+    * handle connection close.
+    */
+    time_t original_time;
+
+    /* Obtain current time. */
+    original_time = time(NULL);
+
+    //handle number of connections
+    atomic_RAII connections_number(connections_number__);
+
+    //set timeout for socket operations
+    struct timeval tv;
+    tv.tv_sec = 3;
+    tv.tv_usec = 0;
+    setsockopt(sock_fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
+
     while(1) {
 
+        //check timeout
+        if(time(NULL) - original_time > CONNECTION_MAX_LIVE_TIME) {
+            return;
+        }
+
+        //check congestion
+        if(connections_number__ > NORMAL_CONNECTION_NUMBER &&
+            time(NULL) - original_time > CONNECTION_MAX_CONGESTION_LIVE_TIME) {
+            return;
+        }
+
         //receive the request or multiple requests from the client
-        uint32_t size = 0, tries = 0;
-        while(size == 0 && tries++ < MAX_RECV_TRIES) {
+        ssize_t size = 0, tries = 0;
+        while(size <= 0 && tries++ < MAX_RECV_TRIES) {
             size = recv(sock_fd, (buffer.get() + buffer_start_index), buffer_length - buffer_start_index - 1, 0);
         }
 
